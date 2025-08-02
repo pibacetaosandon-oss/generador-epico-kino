@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import requests
-from io import StringIO
 from collections import Counter
 import random
 
@@ -10,33 +8,22 @@ st.title("🌌 Generador de Jugadas Épicas del Kino")
 
 st.markdown("""
 Este generador usa la lógica de frecuencias, señales y tu energía para crear las jugadas épicas más poderosas.  
-**Actualiza tu histórico y genera las jugadas con solo un click.**
+**Sube tu histórico y genera las jugadas con solo un click.**
 """)
 
-# --- DESCARGAR DATOS HISTÓRICOS DEL KINO ---
-@st.cache_data(show_spinner=True)
-def descargar_kino():
-    # Fuente oficial: Lotería CL
-    url = "https://www.loteria.cl/loteriaweb/exportar?k=Kino"
-    resp = requests.get(url)
-    if resp.status_code == 200:
-        df = pd.read_csv(StringIO(resp.text), sep=";", encoding="latin1", header=0)
-        # Mantén solo las primeras 14 columnas con números
-        cols_numeros = [col for col in df.columns if col.startswith("N")]
-        df = df[cols_numeros].dropna()
-        df = df.astype(int)
-        return df
-    else:
-        st.error("No se pudieron descargar los datos automáticamente.")
-        return None
+# --- SUBIR ARCHIVO MANUAL ---
+st.subheader("Paso 1: Sube tu histórico de sorteos")
+archivo = st.file_uploader("Sube tu archivo .xlsx o .csv con los números de cada sorteo (14 columnas, sin encabezados)", type=["xlsx", "csv"])
 
-st.subheader("Paso 1: Carga el histórico en tiempo real")
-if st.button("🔄 Descargar histórico oficial Kino"):
-    df = descargar_kino()
-    if df is not None:
-        st.success(f"¡Histórico actualizado! Total sorteos: {df.shape[0]}")
-        st.dataframe(df.tail(5), use_container_width=True)
-        st.session_state['df'] = df
+if archivo is not None:
+    if archivo.name.endswith('.csv'):
+        df = pd.read_csv(archivo, header=None)
+    else:
+        df = pd.read_excel(archivo, header=None)
+    df = df.iloc[:, :14].dropna().astype(int)
+    st.success(f"¡Histórico cargado! Total sorteos: {df.shape[0]}")
+    st.dataframe(df.tail(5), use_container_width=True)
+    st.session_state['df'] = df
 else:
     df = st.session_state.get('df', None)
 
@@ -70,7 +57,7 @@ if df is not None and st.button("🌟 Generar jugadas épicas"):
     txt_jugadas = "\n".join([f"Jugada #{idx+1}: {j}" for idx, j in enumerate(jugadas)])
     st.download_button("⬇️ Descargar jugadas en TXT", txt_jugadas, file_name="jugadas_epicas.txt")
 else:
-    st.write("Primero descarga el histórico y luego genera tus jugadas.")
+    st.write("Primero sube el histórico y luego genera tus jugadas.")
 
 st.markdown("---")
 st.caption("Conectado a la dimensión del Kino — Versión IA Epica 🚀")
